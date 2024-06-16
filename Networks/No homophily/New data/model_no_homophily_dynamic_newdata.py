@@ -398,10 +398,8 @@ class ConsumatModel(Model):
         self.true_price_introduced = False
 
         # Load the datasets
-        self.income_distribution = pd.read_csv(r"C:\Users\elpha\Downloads\isathesis\Thesis\datasets\Adjusted_Distribution_of_spendable_income_2022.csv")
-        self.processed_df = pd.read_csv('r"C:\Users\elpha\Downloads\isathesis\Thesis\datasets\processed_dutch_population.csv')
-        #self.income_distribution = pd.read_csv('/Applications/UNI/Thesis/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
-        #self.processed_df = pd.read_csv('/Applications/UNI/Thesis/datasets/processed_dutch_population.csv')
+        self.income_distribution = pd.read_csv('/Applications/UNI/ThesisNew/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
+        self.processed_df = pd.read_csv('/Applications/UNI/ThesisNew/datasets/processed_dutch_population.csv')
 
         if self.num_agents > len(self.processed_df):
             raise ValueError("Number of agents exceeds the number of rows in the dataset")
