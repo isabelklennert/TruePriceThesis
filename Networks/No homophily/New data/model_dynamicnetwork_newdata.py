@@ -18,7 +18,6 @@ import random
 
 class ConsumerAgent(Agent):
     def __init__(self, unique_id, model, budget, preference_sustainability, preference_conformity, stability_job, initial_product, weight_financial, weight_social, weight_personal):
- 
         super().__init__(unique_id, model)
         self.budget = budget
         self.preference_sustainability = preference_sustainability
