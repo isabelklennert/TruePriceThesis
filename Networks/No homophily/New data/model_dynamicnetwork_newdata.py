@@ -271,14 +271,15 @@ class ConsumerAgent(Agent):
 
 
 
-    def is_comparable(self, other_agent): #Checks if neighbours are similar in their characteristics
-        epsilon = 0.5  # comparison factor, adjust as needed
-        return (
-            abs(self.budget - other_agent.budget) <= epsilon * self.budget and
-            abs(self.preference_sustainability - other_agent.preference_sustainability) <= epsilon * self.preference_sustainability and
-            abs(self.preference_conformity - other_agent.preference_conformity)<= epsilon  *self.preference_conformity
+    def is_comparable(self, other_agent):
+        for attribute in self.model.comparison_attributes:
+            self_attr_value = getattr(self, attribute)
+            other_attr_value = getattr(other_agent, attribute)
+            if abs(self_attr_value - other_attr_value) > self.model.epsilon * self_attr_value:
+                return False
+        return True
        
-    )
+    
  
     def deliberate_among_choices(self, products):
         best_product = None
@@ -392,6 +393,8 @@ class ConsumatModel(Model):
         self.uncertainty_threshold = config['uncertainty_threshold']
         self.inflation_rate = config['inflation_rate']
         self.true_price_introduced = False
+        self.epsilon = config['epsilon']
+        self.comparison_attributes = config['comparison_attributes']
 
         # Load the datasets
         self.income_distribution = pd.read_csv('/Applications/UNI/ThesisNew/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
