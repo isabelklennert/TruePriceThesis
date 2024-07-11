@@ -15,7 +15,6 @@ from scipy.optimize import bisect
 import scipy.spatial
 import random
 
-
 class ConsumerAgent(Agent):
     def __init__(self, unique_id, model, budget, preference_sustainability, preference_conformity, stability_job, initial_product, weight_financial, weight_social, weight_personal):
         super().__init__(unique_id, model)
@@ -359,7 +358,6 @@ class ConsumerAgent(Agent):
 
 
 
-
 class Product:
     def __init__(self, product_id, is_true_price, normal_price, price_increase_percentage, green_score, remediation_level):
         self.product_id = product_id
@@ -468,6 +466,7 @@ class ConsumatModel(Model):
 
     def rewire_network_based_on_homophily(self):
         np.random.seed(self.config['seed'])
+        random.seed(self.config['seed'])
         alpha = self.config.get('alpha', 1.0)
         beta = self.config.get('beta', 0.5)
 
@@ -598,6 +597,8 @@ class ConsumatModel(Model):
 
     def step(self):
         random.seed(self.config['seed'])
+        np.random.seed(self.config['seed'])
+
         # Introduce True Price products from a specific iteration
         if not self.true_price_introduced and self.schedule.steps >= 3:  # X is the step at which TP products are introduced
             self.introduce_true_price_product()
