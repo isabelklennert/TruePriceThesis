@@ -18,21 +18,20 @@ class ConsumerAgent(Agent):
         self.stability_job = stability_job
         self.last_purchased_product = initial_product
         self.chosen_product = initial_product
-        self.is_currently_using_true_price = False  # Initially no one is using TP
-        self.previous_true_price_usage = False  # No one has used TP in the past
+        self.is_currently_using_true_price = False  
+        self.previous_true_price_usage = False 
         self.has_used_true_price = False    
         self.decision_mode = None
         self.weight_financial = weight_financial
         self.weight_social = weight_social
         self.weight_personal = weight_personal
-        self.is_influencer = is_influencer  # New attribute for influencer status
+        self.is_influencer = is_influencer 
         self.neighbors = []
        
         self.choice_changes = 0
         self.decision_mode_changes = 0
         self.previous_decision_mode = None   
  
-        # Initialize satisfaction and uncertainty for each need
         self.F_satisfaction = np.random.uniform(0.01, 1)  
         self.F_uncertainty = np.random.uniform(0.01, 1)
         self.S_satisfaction = np.random.uniform(0.01, 1)
@@ -41,12 +40,11 @@ class ConsumerAgent(Agent):
         self.P_uncertainty = np.random.uniform(0.01, 1)
  
     def step(self):
-        self.update_true_price_usage_status()  # Whether TP was ever used
-        self.previous_true_price_usage = self.is_currently_using_true_price  # Whether a TP product was being used in the previous iteration before any potential changes
-        self.calculate_satisfaction_uncertainty(self.chosen_product)  # Calculate satisfaction and uncertainty for the chosen product from the previous round
+        self.update_true_price_usage_status()  
+        self.previous_true_price_usage = self.is_currently_using_true_price  
+        self.calculate_satisfaction_uncertainty(self.chosen_product)  
  
         satisfied = self.is_satisfied() >= self.model.satisfaction_threshold
-        # Uncertainty: 0 when certain, 1 when uncertain
         uncertain = self.is_uncertain() >= self.model.uncertainty_threshold
  
         previous_product = self.chosen_product
@@ -70,74 +68,59 @@ class ConsumerAgent(Agent):
         self.last_purchased_product = self.chosen_product
  
     def update_true_price_usage_status(self):
-        # Update the True Price usage status based on chosen_product
         if self.chosen_product:
-            self.is_currently_using_true_price = self.chosen_product.is_true_price  # Sets value of chosen product to true/false
-            if self.is_currently_using_true_price:  # Checks if current product is TP
-                self.has_used_true_price = True  # If yes, then has used true price is also true
+            self.is_currently_using_true_price = self.chosen_product.is_true_price  
+            if self.is_currently_using_true_price: 
+                self.has_used_true_price = True  
         else:
-            self.is_currently_using_true_price = False  # If no, then hasn't used true price
- 
+            self.is_currently_using_true_price = False  
+
     def calculate_satisfaction_uncertainty(self, product):
-        # Calculate financial, social, and personal satisfaction and uncertainty
         self.calculate_financial_satisfaction_and_uncertainty(product)
         self.calculate_social_satisfaction_and_uncertainty(product)
         self.calculate_personal_satisfaction_and_uncertainty(product)
  
     def calculate_financial_satisfaction_and_uncertainty(self, product):
-        # Calculate the cost of the product
         product_cost = product.normal_price
 
-        # Check for negative product cost
         if product_cost < 0:
             raise ValueError(f"Product cost is negative: {product_cost} for product ID: {product.product_id}")
 
         if self.budget < 0:
             raise ValueError(f"Budget is negative: {self.budget} for agent ID: {self.unique_id}")
 
-        # Calculate proportion spent
         proportion_spent = product_cost / self.budget if self.budget > 0 else 1
 
-        # Financial Satisfaction: Non-linear function, decreases more sharply as cost approaches and exceeds budget
-        # Satisfaction can range between 0 and 1
+
         self.F_satisfaction = max(0, min(1, 1 - (proportion_spent ** 2) / (1 + proportion_spent ** 2))) if proportion_spent <= 1 else max(0, min(1, 1 / proportion_spent ** 2))
 
-        # Financial Uncertainty: Influenced by inflation rate, proportion of budget spent, and stability of job
-        job_stability_factor = 1 - self.stability_job  # 1 is fully stable so then less uncertain
+        job_stability_factor = 1 - self.stability_job  
         inflation_impact = self.model.inflation_rate / 100
 
-        # Adjust the impact of proportion spent and inflation based on job stability
         proportion_impact = proportion_spent * (1 + job_stability_factor)
         inflation_impact_adjusted = inflation_impact * (1 + job_stability_factor)
 
-        # Combine factors to calculate financial uncertainty
         combined_effect = proportion_impact + inflation_impact_adjusted
         self.F_uncertainty = max(0, min(1, combined_effect / 2))
 
     def calculate_social_satisfaction_and_uncertainty(self, product):
-        # Get neighbors from the social network
         neighbors = self.neighbors
 
-        # Calculate conformity satisfaction
-        same_product_count = sum(1 for neighbor in neighbors if neighbor.previous_true_price_usage == self.previous_true_price_usage)  # How many neighbors have the same TP usage as the current agent
-        conformity = same_product_count / len(neighbors) if neighbors else 0  # Proportion of such neighbors among all neighbors
-        # Diminish the impact of neighbors conforming to the same product
-        self.S_satisfaction = max(0, min(1, (conformity * self.preference_conformity) ** 0.5))  # Square root: as conformity increases, each additional 'unit' of conformity contributes less to overall satisfaction
+        same_product_count = sum(1 for neighbor in neighbors if neighbor.previous_true_price_usage == self.previous_true_price_usage) 
+        conformity = same_product_count / len(neighbors) if neighbors else 0  
+        self.S_satisfaction = max(0, min(1, (conformity * self.preference_conformity) ** 0.5)) 
 
-        # Calculate social uncertainty
-        previous_true_price_users = {neighbor for neighbor in neighbors if neighbor.previous_true_price_usage}  # Used TP in previous time step
-        past_true_price_users = {neighbor for neighbor in neighbors if neighbor.has_used_true_price}  # Have ever used TP
+        previous_true_price_users = {neighbor for neighbor in neighbors if neighbor.previous_true_price_usage}  
+        past_true_price_users = {neighbor for neighbor in neighbors if neighbor.has_used_true_price}  
    
         if len(past_true_price_users) > 0:
-            # Variability of neighbors' choices affects uncertainty
-            self.S_uncertainty = 1 - len(previous_true_price_users) / len(past_true_price_users)  # Proportion of neighbors who have changed their behavior
+            self.S_uncertainty = 1 - len(previous_true_price_users) / len(past_true_price_users) 
         else:
-            self.S_uncertainty = self.preference_conformity  # If no one has used TP, then you are uncertain if you have a high preference for conformity
+            self.S_uncertainty = self.preference_conformity  
         self.S_uncertainty = max(0, min(1, self.S_uncertainty))
  
     def calculate_personal_satisfaction_and_uncertainty(self, product):
-        # Personal Satisfaction: Based on the 'green value' of the product
-        # Assuming each product has a 'green_score' attribute (0 to 1 scale)
+      
         self.P_satisfaction = max(0, min(1, self.preference_sustainability * product.green_score))
 
         remediation_uncertainty = product.remediation_level * self.preference_sustainability
@@ -146,7 +129,6 @@ class ConsumerAgent(Agent):
  
     def calculate_weighted_average(self, values, weights=None):
         if weights is None:
-            # If no weights provided, use equal weighting
             weights = [1 for _ in values]
         weighted_sum = sum(w * v for w, v in zip(weights, values))
         total_weight = sum(weights)
@@ -166,21 +148,18 @@ class ConsumerAgent(Agent):
         )
         return max(0, min(1, total_uncertainty))
  
-    def repeat_action(self):  # Individual and automated
+    def repeat_action(self):  
         self.decision_mode = "repeat"
-        # Stick with the same product as last time
         if self.last_purchased_product is not None:
             self.chosen_product = self.last_purchased_product
         else:
-            # Fallback logic if no product was chosen before
             self.chosen_product = np.random.choice(self.model.products)
    
-    def deliberation(self):  # Individual and reasoned
+    def deliberation(self): 
         self.decision_mode = "deliberate"
-        # Evaluate all products and choose the one with the highest weighted score (financial and personal) - not social because deliberation is an individual process
         self.chosen_product = self.choose_product()
  
-    def imitation(self):  # Social and automated
+    def imitation(self):  
         self.decision_mode = "imitate"
         neighbor_product_count = {}
         tp_product_count = 0
@@ -199,13 +178,10 @@ class ConsumerAgent(Agent):
             most_popular_products = [product for product, count in neighbor_product_count.items() if count == max_count]
 
             if len(most_popular_products) > 1:
-                # Tie between products, select randomly from tied products
                 self.chosen_product = np.random.choice(most_popular_products)
             else:
-                # Clear popular product
                 self.chosen_product = most_popular_products[0]
         else:
-            # No clear popular choice, pick randomly from the category with more products
             if tp_product_count > non_tp_product_count:
                 tp_products = [product for product in self.model.products if product.is_true_price]
                 self.chosen_product = np.random.choice(tp_products)
@@ -213,12 +189,11 @@ class ConsumerAgent(Agent):
                 non_tp_products = [product for product in self.model.products if not product.is_true_price]
                 self.chosen_product = np.random.choice(non_tp_products)
             else:
-                # Equal number of TP and non-TP products, select randomly from all
                 self.chosen_product = np.random.choice(self.model.products)
  
-    def social_comparison(self):  # Social and reasoned
+    def social_comparison(self): 
         self.decision_mode = "social_compare"
-        comparable_neighbors = [  # Identifies similar neighbors
+        comparable_neighbors = [  
             neighbor for neighbor in self.neighbors
             if self.is_comparable(neighbor)
         ]
@@ -234,13 +209,10 @@ class ConsumerAgent(Agent):
             most_popular_products = [product for product, count in product_count.items() if count == max_count]
 
             if len(most_popular_products) == 1:
-                # Clear popular product
                 self.chosen_product = most_popular_products[0]
             else:
-                # Deliberate among popular or tied products
                 self.deliberate_among_choices(most_popular_products)
         else:
-            # No clear popular choice, deliberate among all available products
             self.chosen_product = self.deliberate_among_choices(self.model.products)
 
     def is_comparable(self, other_agent):
@@ -258,12 +230,10 @@ class ConsumerAgent(Agent):
             self.calculate_personal_satisfaction_and_uncertainty(product)
             self.calculate_social_satisfaction_and_uncertainty(product)
 
-            # Combine the satisfaction and uncertainty scores
             net_financial_score = self.F_satisfaction - self.F_uncertainty
             net_personal_score = self.P_satisfaction - self.P_uncertainty
             net_social_score = self.S_satisfaction - self.S_uncertainty
 
-            # Calculate the weighted average
             combined_score = self.calculate_weighted_average(
                 [net_financial_score, net_personal_score, net_social_score],
                 [self.weight_financial, self.weight_personal, self.weight_social]
@@ -283,23 +253,19 @@ class ConsumerAgent(Agent):
 
         for node in neighbor_nodes:
             cell_contents = self.model.grid.get_cell_list_contents([node])
-            if cell_contents:  # Check if the list is not empty
-                neighbors.append(cell_contents[0])  # Assuming there's at most one agent per node
+            if cell_contents: 
+                neighbors.append(cell_contents[0])  
         return neighbors
  
     def choose_product(self):
-        # Filter products based on availability
         available_products = self.model.products
 
-        # Choose a product from available products based on a composite score of financial and personal satisfaction
         best_product = None
         best_score = -1
         for product in available_products:
-            # Calculate satisfaction and uncertainty for each product
             self.calculate_financial_satisfaction_and_uncertainty(product)
             self.calculate_personal_satisfaction_and_uncertainty(product)
 
-            # Combine the satisfaction and uncertainty scores
             net_financial_score = self.F_satisfaction - self.F_uncertainty
             net_personal_score = self.P_satisfaction - self.P_uncertainty
 
@@ -331,7 +297,7 @@ class Product:
         self.price_increase_percentage = price_increase_percentage
         self.green_score = green_score
         self.remediation_level = remediation_level
-        self.tp_available = False  # Initially, TP is not available
+        self.tp_available = False 
 
 
 class ConsumatModel(Model):
@@ -342,7 +308,7 @@ class ConsumatModel(Model):
         self.num_agents = config['network_params']['n']
         self.TP_percentage = config['TP_percentage']
         self.product_price_range = config['product_price_range']
-        self.rewiring_probability = config['network_params'].get('p', 0)  # Default to 0 if not present
+        self.rewiring_probability = config['network_params'].get('p', 0) 
         self.num_products = config['num_products']
         self.schedule = RandomActivation(self)
         self.min_increase_percentage = config['min_increase_percentage']
@@ -353,19 +319,16 @@ class ConsumatModel(Model):
         self.true_price_introduced = False
         self.epsilon = config['epsilon']
         self.comparison_attributes = config['comparison_attributes']
-        self.num_influencers = config['num_influencers']  # Number of influencers to be selected
+        self.num_influencers = config['num_influencers'] 
 
-        # Load the datasets
         self.income_distribution = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew1/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
         self.processed_df = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew1/datasets/processed_dutch_population.csv')
 
         if self.num_agents > len(self.processed_df):
             raise ValueError("Number of agents exceeds the number of rows in the dataset")
 
-        # Adjust the income distribution to fit within the product price range
         self.adjust_income_distribution_to_price_range()
 
-        # Create products
         self.products = self.create_products()
         self.agents = self.create_agents()
 
@@ -374,7 +337,6 @@ class ConsumatModel(Model):
         self.place_agents_on_grid()
         self.update_agents_neighbors()
 
-        # Identify influencers
         self.identify_influencers()
 
         self.datacollector = DataCollector(
@@ -417,12 +379,10 @@ class ConsumatModel(Model):
 
     def step(self):
         random.seed(self.config['seed'])
-        # Introduce True Price products from a specific iteration
         if not self.true_price_introduced and self.schedule.steps >= 3:
             self.introduce_true_price_product()
             self.true_price_introduced = True
 
-        # Make influencers adopt True Price products
         self.force_influencers_to_adopt_true_price()
 
         if random.random() < self.rewiring_probability:
@@ -449,20 +409,15 @@ class ConsumatModel(Model):
         min_price = product_price_range[0]
         max_price = product_price_range[1]
 
-        # Calculate the maximum possible price increase
         max_possible_price = max_price * (1 + self.max_increase_percentage / 100)
 
-        # Separate negative and non-negative incomes
         non_negative_income = self.income_distribution['Income in thousands'].clip(lower=0)
         negative_income_mask = self.income_distribution['Income in thousands'] < 0
 
-        # Normalize the non-negative part of the income distribution to [0, 1]
         normalized_income = (non_negative_income - non_negative_income.min()) / (non_negative_income.max() - non_negative_income.min())
     
-        # Scale to fit the extended product price range
         self.income_distribution['Transformed Income'] = min_price + normalized_income * (max_possible_price - min_price)
     
-        # Handle negative incomes by assigning a value less than min_price
         self.income_distribution.loc[negative_income_mask, 'Transformed Income'] = min_price - 1
 
     def update_agents_neighbors(self):
@@ -475,8 +430,8 @@ class ConsumatModel(Model):
 
         for node in neighbor_nodes:
             cell_contents = self.grid.get_cell_list_contents([node])
-            if cell_contents:  # Assuming there's at most one agent per node
-                neighbors.extend(cell_contents)  # You might need to filter for agents only, depending on your grid's structure
+            if cell_contents:  
+                neighbors.extend(cell_contents) 
 
         return neighbors
 
@@ -487,12 +442,11 @@ class ConsumatModel(Model):
         sampled_budgets = []
 
         for i in range(self.num_agents):
-            # Sampling budget from the income distribution
             budget = np.random.choice(
                 self.income_distribution['Transformed Income'].values,
                 p=self.income_distribution['Probability'].values
             )
-            sampled_budgets.append(budget)  # Collect sampled budget for diagnostics
+            sampled_budgets.append(budget)  
 
             row = self.processed_df.iloc[i]
 
@@ -504,10 +458,8 @@ class ConsumatModel(Model):
             weight_social /= total_weight
             weight_personal /= total_weight
 
-            # Choose an initial product for the agent
             initial_product = np.random.choice(self.products)
 
-            # Creating an agent with the sampled and calculated attributes
             agent = ConsumerAgent(
                 unique_id=i,
                 model=self,
@@ -598,11 +550,10 @@ class ConsumatModel(Model):
         num_products = self.num_products
         low_price, high_price = self.product_price_range
         mean_log_price = np.log((low_price + high_price) / 2)
-        sigma = 0.5  # Adjust sigma to control the spread of the distribution
+        sigma = 0.5 
 
         for i in range(num_products):
             normal_price = np.random.lognormal(mean_log_price, sigma)
-            # Ensure the price falls within the specified range
             while normal_price < low_price or normal_price > high_price:
                 normal_price = np.random.lognormal(mean_log_price, sigma)
         
