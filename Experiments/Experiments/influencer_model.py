@@ -321,8 +321,8 @@ class ConsumatModel(Model):
         self.comparison_attributes = config['comparison_attributes']
         self.num_influencers = config['num_influencers'] 
 
-        self.income_distribution = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew1/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
-        self.processed_df = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew1/datasets/processed_dutch_population.csv')
+        self.income_distribution = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew-2/datasets/Adjusted_Distribution_of_spendable_income_2022.csv')
+        self.processed_df = pd.read_csv('/Users/alexelphinstone/Downloads/ThesisNew-2/datasets/processed_dutch_population.csv')
 
         if self.num_agents > len(self.processed_df):
             raise ValueError("Number of agents exceeds the number of rows in the dataset")
@@ -371,7 +371,10 @@ class ConsumatModel(Model):
 
     def identify_influencers(self):
         degrees = np.array([self.G.degree(node) for node in self.G.nodes])
-        influencer_indices = np.argsort(degrees)[-self.num_influencers:]
+        if self.num_influencers == 0:
+            influencer_indices = []
+        else:
+            influencer_indices = np.argsort(degrees)[-self.num_influencers:]
         
         for i, agent in enumerate(self.agents):
             if i in influencer_indices:
@@ -393,7 +396,7 @@ class ConsumatModel(Model):
         self.datacollector.collect(self)
 
         adoption_rate = self.calculate_true_price_adoption_rate()
-        print(f"Iteration {self.schedule.steps}: True Price Adoption Rate = {adoption_rate}%")
+        #print(f"Iteration {self.schedule.steps}: True Price Adoption Rate = {adoption_rate}%")
 
     def force_influencers_to_adopt_true_price(self):
         tp_products = [product for product in self.products if product.is_true_price]
